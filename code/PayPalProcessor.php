@@ -2,6 +2,11 @@
 
 class PayPalProcessor_Express extends PaymentProcessor {
 
+	private static $allowed_actions = array(
+		'capture',
+		'complete'
+	);
+
 	public function capture($data) {
 
 		parent::capture($data);
@@ -15,17 +20,17 @@ class PayPalProcessor_Express extends PaymentProcessor {
 		));
 		
 		// Authorise the payment and get token 
-    $result = $this->gateway->authorise($this->paymentData);
-    
-    if ($result && !$result->isSuccess()) {
+		$result = $this->gateway->authorise($this->paymentData);
+		
+		if ($result && !$result->isSuccess()) {
 			$this->payment->updateStatus($result);
 			$this->doRedirect();
 			return;
 		}
 
 		// Save the token for good measure
-    $this->payment->Token = $this->gateway->tokenID;
-    $this->payment->write();
+		$this->payment->Token = $this->gateway->tokenID;
+		$this->payment->write();
 
 		// Process payment
 		$result = $this->gateway->process($this->paymentData);
@@ -44,8 +49,8 @@ class PayPalProcessor_Express extends PaymentProcessor {
 		$this->payment = Payment::get()->byID($request->param('OtherID'));
 		
 		// Save the payer ID for good measure
-    $this->payment->PayerID = $request->getVar('PayerID');
-    $this->payment->write();
+		$this->payment->PayerID = $request->getVar('PayerID');
+		$this->payment->write();
 
 		// Reconstruct the gateway object
 		$methodName = $request->param('ID');

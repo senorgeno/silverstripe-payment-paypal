@@ -3,23 +3,23 @@
 class PayPalGateway extends PaymentGateway_GatewayHosted {
 	
 	protected $supportedCurrencies = array(
-    'NZD' => 'New Zealand Dollar',
-    'USD' => 'United States Dollar',
-    'GBP' => 'Great British Pound',
-    'AUD' => 'Australian Dollar',
-    'CAD' => 'Canadian Dollar',
-    'CZK' => 'Czech Koruna',
-    'DKK' => 'Danish Krone',
-    'EUR' => 'Euro',
-    'HKD' => 'Hong Kong Dollar',
-    'HUF' => 'Hungarian Forint',
-    'JPY' => 'Japanese Yen',
-    'NOK' => 'Norwegian Krone',
-    'PLN' => 'Polish Zloty',
-    'SGD' => 'Singapore Dollar',
-    'SEK' => 'Swedish Krona',
-    'CHF' => 'Swiss Franc',
-  );
+		'NZD' => 'New Zealand Dollar',
+		'USD' => 'United States Dollar',
+		'GBP' => 'Great British Pound',
+		'AUD' => 'Australian Dollar',
+		'CAD' => 'Canadian Dollar',
+		'CZK' => 'Czech Koruna',
+		'DKK' => 'Danish Krone',
+		'EUR' => 'Euro',
+		'HKD' => 'Hong Kong Dollar',
+		'HUF' => 'Hungarian Forint',
+		'JPY' => 'Japanese Yen',
+		'NOK' => 'Norwegian Krone',
+		'PLN' => 'Polish Zloty',
+		'SGD' => 'Singapore Dollar',
+		'SEK' => 'Swedish Krona',
+		'CHF' => 'Swiss Franc',
+	);
 	
 }
 
@@ -30,8 +30,8 @@ class PayPalGateway_Express extends PayPalGateway {
 	private function callAPI($data) {
 		
 		$config = $this->getConfig();
-    $authentication = $config['authentication'];
-    $endpoint = $config['endpoint'];
+		$authentication = $config['authentication'];
+		$endpoint = $config['endpoint'];
 
 		$auth = array(
 			'USER' => $authentication['username'],			
@@ -51,7 +51,7 @@ class PayPalGateway_Express extends PayPalGateway {
 	
 	private function formatResponse($nvpstr){
 		$intial = 0;
-	 	$nvpArray = array();
+		$nvpArray = array();
 
 		while(strlen($nvpstr)){
 			//postion of Key
@@ -67,8 +67,8 @@ class PayPalGateway_Express extends PayPalGateway {
 			//decoding the respose
 			$nvpArray[urldecode($keyval)] =urldecode( $valval);
 			$nvpstr=substr($nvpstr,$valuepos+1,strlen($nvpstr));
-	  }
-	  
+		}
+		
 		return $nvpArray;
 	}
 	
@@ -115,7 +115,7 @@ class PayPalGateway_Express extends PayPalGateway {
 	public function process($data) {
 
 		$config = $this->getConfig();
-    $url = $config['url'];
+		$url = $config['url'];
 
 		$paymentURL = $url . $this->tokenID . '&useraction=commit'; //useraction=commit ensures the payment is confirmed on PayPal not on a merchant confirm page
 
@@ -123,25 +123,25 @@ class PayPalGateway_Express extends PayPalGateway {
 			return new PaymentGateway_Failure(null, 'URL could not be generated from token.');
 		}
 		Controller::curr()->redirect($paymentURL);
-  }	
-  
-  /**
-   * Confirm the payment by processing DoExpressCheckoutPayment
-   * https://www.x.com/developers/paypal/documentation-tools/api/doexpresscheckoutpayment-api-operation-nvp
-   */ 
-  public function confirm($data) {
-  	
-  	$payload = array(
-  		'VERSION' => '94.0',
-  		'METHOD' => 'DoExpressCheckoutPayment',
-  		'PAYERID' => $data['PayerID'],
+	}	
+	
+	/**
+	 * Confirm the payment by processing DoExpressCheckoutPayment
+	 * https://www.x.com/developers/paypal/documentation-tools/api/doexpresscheckoutpayment-api-operation-nvp
+	 */ 
+	public function confirm($data) {
+		
+		$payload = array(
+			'VERSION' => '94.0',
+			'METHOD' => 'DoExpressCheckoutPayment',
+			'PAYERID' => $data['PayerID'],
 			'TOKEN' => $data['Token'],
 			'PAYMENTREQUEST_0_AMT' => $data['Amount'],
 			'PAYMENTREQUEST_0_CURRENCYCODE' => $data['Currency'],
 			'PAYMENTREQUEST_0_PAYMENTACTION' => 'Sale'
-  	);
+		);
 
-  	$response = $this->callAPI($payload);
+		$response = $this->callAPI($payload);
 		$body = $this->formatResponse($response->getBody());
 
 		if(!isset($body['ACK']) || !(strtoupper($body['ACK']) == 'SUCCESS' || strtoupper($body['ACK']) == 'SUCCESSWITHWARNING')){
@@ -215,5 +215,5 @@ class PayPalGateway_Express extends PayPalGateway {
 		}
 		
 		return $result;
-  }	
+	}	
 }
