@@ -217,3 +217,43 @@ class PayPalGateway_Express extends PayPalGateway {
 		return $result;
 	}	
 }
+
+/**
+ * Gateway class to mock up PayPalExpress for testing purpose
+ */
+class PayPalGateway_Express_Mock extends PayPalGateway_Express {
+
+	/**
+	 * Authorise the payment by processing SetExpressCheckout and retrieving the token to be saved on the payment
+	 * https://www.x.com/developers/paypal/documentation-tools/api/setexpresscheckout-api-operation-nvp
+	 * 
+	 */ 
+//	public function authorise($data) {
+//
+//			    //Mock request string
+//		$mock = isset($data['mock']) ? $data['mock'] : false;
+//		if ($mock) {
+//		  switch($mock) {
+//			  case 'incomplete':
+//				  $request_string = false;
+//				  break;
+//			  case 'failure':
+//				  $request_string = "
+//				  <Request valid=\"0\">
+//							  <URI></URI>
+//						  </Request>";
+//				  break;
+//			  case 'success':
+//				  $response = new PaymentGateway_Success('xx', 'You are attempting to make a payment without the necessary credentials set');
+//				  break;
+//	
+//			}
+//		}
+//		else {
+//		  throw new Exception('Mock string not passed');
+//		}
+//
+//		return $response;
+//	}
+
+}

@@ -8,6 +8,7 @@ PaymentFactory:
     gateway_classes:
       live: 'PayPalGateway_Express'
       dev: 'PayPalGateway_Express'
+      test: 'PayPalGateway_Express_Mock'
     model: 'PayPal_Express'
 
 PayPalGateway_Express:
@@ -20,4 +21,4 @@ PayPalGateway_Express:
     endpoint:
       'https://api-3t.sandbox.paypal.com/nvp'
     url:
-      'https://www.sandbox.paypal.com/webscr?cmd=_express-checkout&token='
+      'https://www.sandbox.paypal.com/cgi-bin/webscr?cmd=_express-checkout&token='
