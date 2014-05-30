@@ -122,7 +122,7 @@ class PayPalGateway_Express extends PayPalGateway {
 		$config = $this->getConfig();
 		$url = $config['url'];
 
-		$paymentURL = $url . $this->tokenID . '&useraction=commit'; //useraction=commit ensures the payment is confirmed on PayPal not on a merchant confirm page
+		$paymentURL = $url . $this->tokenID; //'&useraction=commit' //useraction=commit ensures the payment is confirmed on PayPal not on a merchant confirm page
 
 		if (!$paymentURL) {
 			return new PaymentGateway_Failure(null, 'URL could not be generated from token.');
@@ -144,6 +144,112 @@ class PayPalGateway_Express extends PayPalGateway {
 			'PAYMENTREQUEST_0_AMT' => $data['Amount'],
 			'PAYMENTREQUEST_0_CURRENCYCODE' => $data['Currency'],
 			'PAYMENTREQUEST_0_PAYMENTACTION' => 'Sale'
+		);
+
+		$response = $this->callAPI($payload);
+		$body = $this->formatResponse($response->getBody());
+
+		if(!isset($body['ACK']) || !(strtoupper($body['ACK']) == 'SUCCESS' || strtoupper($body['ACK']) == 'SUCCESSWITHWARNING')){
+			$result = new PaymentGateway_Failure($response, 'You are attempting to make a payment without the necessary credentials set');
+		}
+		else {
+			
+			switch(strtoupper($body['PAYMENTINFO_0_PAYMENTSTATUS'])){
+				case 'PROCESSED':
+				case 'COMPLETED':
+					$result = new PaymentGateway_Success(
+						$response, 
+						_t('PayPalPayment.SUCCESS', 'The payment has been completed, and the funds have been successfully transferred')
+					);
+					break;
+				case 'EXPIRED':
+					$result = new PaymentGateway_Failure(
+						$response, 
+						_t('PayPalPayment.AUTHORISATION', 'The authorization period for this payment has been reached')
+					);
+					break;	
+				case 'DENIED':
+					$result = new PaymentGateway_Failure(
+						$response, 
+						_t('PayPalPayment.DENIED', 'Payment was denied')
+					);
+					break;	
+				case 'REVERSED':
+					$result = new PaymentGateway_Failure(
+						$response, 
+						_t('PayPalPayment.REVERSED', 'Payment was reversed')
+					);
+					break;	
+				case 'VOIDED':
+					$result = new PaymentGateway_Failure(
+						$response, 
+						_t('PayPalPayment.VOIDED', 'An authorization for this transaction has been voided')
+					);
+					break;	
+				case 'FAILED':
+					$this->Status = 'Failure';
+					$result = new PaymentGateway_Failure(
+						$response, 
+						_t('PayPalPayment.FAILED', 'Payment failed')
+					);
+					break;
+				case 'IN-PROGRESS':
+				case 'PENDING':
+					$result = new PaymentGateway_Incomplete(
+						$response, 
+						_t('PayPalPayment.PENDING', 'The payment is pending because ' . $res['PAYMENTINFO_0_PENDINGREASON'])
+					);
+					break;
+				case 'REFUNDED':
+				case 'CANCEL-REVERSAL': // A reversal has been canceled; for example, when you win a dispute and the funds for the reversal have been returned to you.
+				case 'PARTIALLY-REFUNDED':
+					$result = new PaymentGateway_Success(
+						$response, 
+						_t('PayPalPayment.SUCCESS', 'The payment has been completed, and the funds have been successfully transferred')
+					);
+					break;	
+					
+				default:
+					$result = new PaymentGateway_Incomplete(
+						$response, 
+						_t('PayPalPayment.DEFAULT', 'The payment is pending.')
+					);
+					break;
+			}	
+			
+		}
+		
+		return $result;
+	}
+	public function createRecurringPaymentProfile($data) {
+		
+//$date = date('c',time() + 7 * 24 * 3600); 
+//$profile = array(
+//    'cost' = '29.99',
+//    'period' = 'Month',
+//    'frequency' = 1, // Bill every 1 month
+//    'total_cycles' = 12, // End after 12 cycles (1 year). Use 0 for unlimited
+//    'desc' = 'Time magazine monthly subscription for 1 year', // Must be the same as we defined at the start of the Express Checkout process
+//    'start_date' = $date, // Profile start date
+//    'currency' = 'GBP' // Payment currency
+//);
+//
+//$profileId = $paypal -> createRecurringProfile($profile);
+		
+		$payload = array(
+			'VERSION' => '94.0',
+			'METHOD' => 'CreateRecurringPaymentsProfile',
+			'TOKEN' => $data['Token'],
+			'PROFILESTARTDATE:' => '2014-10-01T03:00:00',
+			'DESC' => 'The Arcanum Subscription Description',
+			'BILLINGPERIOD' => 'Month',
+			'BILLINGFREQUENCY' => '12',
+			'AMT' => 1.00,
+			'CURRENCYCODE' => 'USD',
+			'L_PAYMENTREQUEST_0_ITEMCATEGORY0' => 'Digital',
+			'L_PAYMENTREQUEST_0_NAME0' => 'The Arcanum Subscription Name',
+			'L_PAYMENTREQUEST_0_AMT' => 1.00,
+			'L_PAYMENTREQUEST_0_QTY0' => 1
 		);
 
 		$response = $this->callAPI($payload);
