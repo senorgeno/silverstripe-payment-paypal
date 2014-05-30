@@ -89,15 +89,20 @@ class PayPalGateway_Express extends PayPalGateway {
 			'RETURNURL' => $this->returnURL,
 			'CANCELURL' => $this->returnURL,
 			
+			//recuring payments
+			'L_BILLINGTYPE0' => 'RecurringPayments',
+			'L_BILLINGAGREEMENTDESCRIPTION0' => 'The Arcanum Subscription',
+			'PAYMENTREQUEST_0_AMT' => $data['Amount'],
+		    
 			//Required for digital goods
-			'PAYMENTREQUEST_0_ITEMAMT' => $data['Amount'],
-			'REQCONFIRMSHIPPING' => 0, //require that paypal account address be confirmed
-			'NOSHIPPING' => 1, //show shipping fields, or not 0 = show shipping, 1 = don't show shipping, 2 = use account address, if none passed
-			'PAYMENTREQUEST_0_PAYMENTACTION' => 'Sale',
-
-			//Optional
-			'LANDINGPAGE' => 'Billing', //can be 'Billing' or 'Login'
-			'SOLUTIONTYPE' => 'Sole', //require paypal account, or not. Can be or 'Mark' (required) or 'Sole' (not required)
+//			'PAYMENTREQUEST_0_ITEMAMT' => $data['Amount'],
+//			'REQCONFIRMSHIPPING' => 0, //require that paypal account address be confirmed
+//			'NOSHIPPING' => 1, //show shipping fields, or not 0 = show shipping, 1 = don't show shipping, 2 = use account address, if none passed
+//			'PAYMENTREQUEST_0_PAYMENTACTION' => 'Sale',
+//
+//			//Optional
+//			'LANDINGPAGE' => 'Billing', //can be 'Billing' or 'Login'
+//			'SOLUTIONTYPE' => 'Sole', //require paypal account, or not. Can be or 'Mark' (required) or 'Sole' (not required)
 		);
 
 		$response = $this->callAPI($payload);
