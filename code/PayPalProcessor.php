@@ -51,7 +51,7 @@ class PayPalProcessor_Express extends PaymentProcessor {
 		// Save the payer ID for good measure
 		$this->payment->PayerID = $request->getVar('PayerID');
 		$this->payment->write();
-
+		
 		// Reconstruct the gateway object
 		$methodName = $request->param('ID');
 		$this->gateway = PaymentFactory::get_gateway($methodName);
@@ -63,8 +63,12 @@ class PayPalProcessor_Express extends PaymentProcessor {
 			'Amount' => $this->payment->Amount->Amount,
 			'Currency' => $this->payment->Amount->Currency
 		);
-
-		$result = $this->gateway->confirm($data);
+		//calls DoExpressCheckoutPayment.. not needed for recurring
+		//$result = $this->gateway->confirm($data);
+		$result = $this->gateway->createRecurringPaymentProfile($data);
+		
+		$this->payment->ProfileID = $this->gateway->profileID;
+		
 		$this->payment->updateStatus($result);
 
 		// Do redirection

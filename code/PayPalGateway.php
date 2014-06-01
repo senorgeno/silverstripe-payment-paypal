@@ -26,6 +26,7 @@ class PayPalGateway extends PaymentGateway_GatewayHosted {
 class PayPalGateway_Express extends PayPalGateway {
 	
 	public $tokenID;
+	public $payerID;
 
 	private function callAPI($data) {
 		
@@ -91,7 +92,7 @@ class PayPalGateway_Express extends PayPalGateway {
 			
 			//recuring payments
 			'L_BILLINGTYPE0' => 'RecurringPayments',
-			'L_BILLINGAGREEMENTDESCRIPTION0' => 'The Arcanum Subscription',
+			'L_BILLINGAGREEMENTDESCRIPTION0' => 'ArcanumSubscription',
 			'PAYMENTREQUEST_0_AMT' => $data['Amount'],
 		    
 			//Required for digital goods
@@ -122,7 +123,7 @@ class PayPalGateway_Express extends PayPalGateway {
 		$config = $this->getConfig();
 		$url = $config['url'];
 
-		$paymentURL = $url . $this->tokenID; //'&useraction=commit' //useraction=commit ensures the payment is confirmed on PayPal not on a merchant confirm page
+		$paymentURL = $url . $this->tokenID . '&useraction=commit'; //useraction=commit ensures the payment is confirmed on PayPal not on a merchant confirm page
 
 		if (!$paymentURL) {
 			return new PaymentGateway_Failure(null, 'URL could not be generated from token.');
@@ -221,110 +222,43 @@ class PayPalGateway_Express extends PayPalGateway {
 		
 		return $result;
 	}
+	
 	public function createRecurringPaymentProfile($data) {
-		
-//$date = date('c',time() + 7 * 24 * 3600); 
-//$profile = array(
-//    'cost' = '29.99',
-//    'period' = 'Month',
-//    'frequency' = 1, // Bill every 1 month
-//    'total_cycles' = 12, // End after 12 cycles (1 year). Use 0 for unlimited
-//    'desc' = 'Time magazine monthly subscription for 1 year', // Must be the same as we defined at the start of the Express Checkout process
-//    'start_date' = $date, // Profile start date
-//    'currency' = 'GBP' // Payment currency
-//);
-//
-//$profileId = $paypal -> createRecurringProfile($profile);
 		
 		$payload = array(
 			'VERSION' => '94.0',
 			'METHOD' => 'CreateRecurringPaymentsProfile',
 			'TOKEN' => $data['Token'],
-			'PROFILESTARTDATE:' => '2014-10-01T03:00:00',
-			'DESC' => 'The Arcanum Subscription Description',
+			'PAYERID' => $data['PayerID'],
+			'PROFILESTARTDATE' => '2014-06-10T00:00:00Z',
+			'DESC' => 'ArcanumSubscription',
 			'BILLINGPERIOD' => 'Month',
-			'BILLINGFREQUENCY' => '12',
-			'AMT' => 1.00,
-			'CURRENCYCODE' => 'USD',
-			'L_PAYMENTREQUEST_0_ITEMCATEGORY0' => 'Digital',
-			'L_PAYMENTREQUEST_0_NAME0' => 'The Arcanum Subscription Name',
-			'L_PAYMENTREQUEST_0_AMT' => 1.00,
-			'L_PAYMENTREQUEST_0_QTY0' => 1
+			'BILLINGFREQUENCY' => '1',
+			'AMT' => $data['Amount'],
+			'CURRENCYCODE' => $data['Currency'],
+			'COUNTRYCODE' => 'US',
+//			'L_PAYMENTREQUEST_0_ITEMCATEGORY0' => 'Digital',
+//			'L_PAYMENTREQUEST_0_NAME0' => 'ArcanumSubscription',
+//			'L_PAYMENTREQUEST_0_AMT' => 1.00,
+//			'L_PAYMENTREQUEST_0_QTY0' => 1,
+			'MAXFAILEDPAYMENTS' => 3
 		);
 
 		$response = $this->callAPI($payload);
 		$body = $this->formatResponse($response->getBody());
 
 		if(!isset($body['ACK']) || !(strtoupper($body['ACK']) == 'SUCCESS' || strtoupper($body['ACK']) == 'SUCCESSWITHWARNING')){
-			$result = new PaymentGateway_Failure($response, 'You are attempting to make a payment without the necessary credentials set');
+			$result = new PaymentGateway_Failure($response, $body['L_LONGMESSAGE0']);
 		}
 		else {
+			//create new Paypal profile
+			$profile = new PayPalPaymentProfile();
+			$profile->MemberID = Member::currentUserID();
+			$profile->ProfileID = $body['PROFILEID'];
+			$profile->write();
 			
-			switch(strtoupper($body['PAYMENTINFO_0_PAYMENTSTATUS'])){
-				case 'PROCESSED':
-				case 'COMPLETED':
-					$result = new PaymentGateway_Success(
-						$response, 
-						_t('PayPalPayment.SUCCESS', 'The payment has been completed, and the funds have been successfully transferred')
-					);
-					break;
-				case 'EXPIRED':
-					$result = new PaymentGateway_Failure(
-						$response, 
-						_t('PayPalPayment.AUTHORISATION', 'The authorization period for this payment has been reached')
-					);
-					break;	
-				case 'DENIED':
-					$result = new PaymentGateway_Failure(
-						$response, 
-						_t('PayPalPayment.DENIED', 'Payment was denied')
-					);
-					break;	
-				case 'REVERSED':
-					$result = new PaymentGateway_Failure(
-						$response, 
-						_t('PayPalPayment.REVERSED', 'Payment was reversed')
-					);
-					break;	
-				case 'VOIDED':
-					$result = new PaymentGateway_Failure(
-						$response, 
-						_t('PayPalPayment.VOIDED', 'An authorization for this transaction has been voided')
-					);
-					break;	
-				case 'FAILED':
-					$this->Status = 'Failure';
-					$result = new PaymentGateway_Failure(
-						$response, 
-						_t('PayPalPayment.FAILED', 'Payment failed')
-					);
-					break;
-				case 'IN-PROGRESS':
-				case 'PENDING':
-					$result = new PaymentGateway_Incomplete(
-						$response, 
-						_t('PayPalPayment.PENDING', 'The payment is pending because ' . $res['PAYMENTINFO_0_PENDINGREASON'])
-					);
-					break;
-				case 'REFUNDED':
-				case 'CANCEL-REVERSAL': // A reversal has been canceled; for example, when you win a dispute and the funds for the reversal have been returned to you.
-				case 'PARTIALLY-REFUNDED':
-					$result = new PaymentGateway_Success(
-						$response, 
-						_t('PayPalPayment.SUCCESS', 'The payment has been completed, and the funds have been successfully transferred')
-					);
-					break;	
-					
-				default:
-					$result = new PaymentGateway_Incomplete(
-						$response, 
-						_t('PayPalPayment.DEFAULT', 'The payment is pending.')
-					);
-					break;
-			}	
-			
+			$result = new PaymentGateway_Success($response, 'Profile created sucessfully');
 		}
-		
 		return $result;
 	}	
 }
@@ -334,37 +268,5 @@ class PayPalGateway_Express extends PayPalGateway {
  */
 class PayPalGateway_Express_Mock extends PayPalGateway_Express {
 
-	/**
-	 * Authorise the payment by processing SetExpressCheckout and retrieving the token to be saved on the payment
-	 * https://www.x.com/developers/paypal/documentation-tools/api/setexpresscheckout-api-operation-nvp
-	 * 
-	 */ 
-//	public function authorise($data) {
-//
-//			    //Mock request string
-//		$mock = isset($data['mock']) ? $data['mock'] : false;
-//		if ($mock) {
-//		  switch($mock) {
-//			  case 'incomplete':
-//				  $request_string = false;
-//				  break;
-//			  case 'failure':
-//				  $request_string = "
-//				  <Request valid=\"0\">
-//							  <URI></URI>
-//						  </Request>";
-//				  break;
-//			  case 'success':
-//				  $response = new PaymentGateway_Success('xx', 'You are attempting to make a payment without the necessary credentials set');
-//				  break;
-//	
-//			}
-//		}
-//		else {
-//		  throw new Exception('Mock string not passed');
-//		}
-//
-//		return $response;
-//	}
 
 }
